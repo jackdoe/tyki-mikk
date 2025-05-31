@@ -1,6 +1,4 @@
-from Xlib import X, display, XK
-from Xlib.ext import record
-from Xlib.protocol import rq
+import sys
 import numpy as np
 import pyaudio
 import torch
@@ -30,26 +28,6 @@ pipe = pipeline(
 )
 
 pressed = threading.Event()
-local_dpy = display.Display()
-record_dpy = display.Display()
-ROOT = local_dpy.screen().root
-F_KEYCODE = local_dpy.keysym_to_keycode(XK.string_to_keysym("F4"))
-ROOT.grab_key(F_KEYCODE, 0, True, X.GrabModeAsync, X.GrabModeAsync)
-
-def record_callback(reply):
-    if reply.category != record.FromServer or reply.client_swapped or not len(reply.data):
-        return
-
-    data = reply.data
-    while len(data):
-        event, data = rq.EventField(None).parse_binary_value(data, record_dpy.display, None, None)
-
-        if event.detail == F_KEYCODE:
-            if event.type == X.KeyPress and not pressed.is_set():
-                pressed.set()
-            elif event.type == X.KeyRelease and pressed.is_set():
-                pressed.clear()
-
 def worker():
     pa = pyaudio.PyAudio()
     beeper = pa.open(format=pyaudio.paFloat32,
@@ -89,22 +67,55 @@ def worker():
 
             pyautogui.write(result["text"].strip(), interval=0.001)
 
-threading.Thread(target=worker,daemon=True).start()
-ctx = record_dpy.record_create_context(
-        0,
-        [record.AllClients],
-        [{
-            'core_requests'   : (0, 0),
-            'core_replies'    : (0, 0),
-            'ext_requests'    : (0, 0, 0, 0),
-            'ext_replies'     : (0, 0, 0, 0),
-            'delivered_events': (0, 0),
-            'device_events'   : (X.KeyPress, X.KeyRelease),
-            'errors'          : (0, 0),
-            'client_started'  : False,
-            'client_died'     : False,
-        }]
-)
 
-record_dpy.record_enable_context(ctx, record_callback)
-record_dpy.record_free_context(ctx)
+
+
+def start_x11():
+    from Xlib import X, display, XK
+    from Xlib.ext import record
+    from Xlib.protocol import rq
+    local_dpy = display.Display()
+    record_dpy = display.Display()
+    ROOT = local_dpy.screen().root
+    F_KEYCODE = local_dpy.keysym_to_keycode(XK.string_to_keysym("F4"))
+    ROOT.grab_key(F_KEYCODE, 0, True, X.GrabModeAsync, X.GrabModeAsync)
+
+    def record_callback(reply):
+        if reply.category != record.FromServer or reply.client_swapped or not len(reply.data):
+            return
+
+        data = reply.data
+        while len(data):
+            event, data = rq.EventField(None).parse_binary_value(data, record_dpy.display, None, None)
+
+            if event.detail == F_KEYCODE:
+                if event.type == X.KeyPress and not pressed.is_set():
+                    pressed.set()
+                elif event.type == X.KeyRelease and pressed.is_set():
+                    pressed.clear()
+
+    ctx = record_dpy.record_create_context(
+            0,
+            [record.AllClients],
+            [{
+                'core_requests'   : (0, 0),
+                'core_replies'    : (0, 0),
+                'ext_requests'    : (0, 0, 0, 0),
+                'ext_replies'     : (0, 0, 0, 0),
+                'delivered_events': (0, 0),
+                'device_events'   : (X.KeyPress, X.KeyRelease),
+                'errors'          : (0, 0),
+                'client_started'  : False,
+                'client_died'     : False,
+            }]
+    )
+
+    record_dpy.record_enable_context(ctx, record_callback)
+    record_dpy.record_free_context(ctx)
+
+if __name__ == "__main__":
+    threading.Thread(target=worker,daemon=True).start()
+    if sys.platform == "linux":
+        start_x11()
+    else:
+        print("not supported yet")
