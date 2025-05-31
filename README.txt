@@ -1,6 +1,4 @@
-press f4 to transcribe and type the transcription
-
-requires x11
+press f4 to transcribe and it will type the transcription
 
 to run:
-  uv run main-x11.py
+  uv run main.py
