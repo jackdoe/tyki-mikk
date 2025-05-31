@@ -55,7 +55,10 @@ def worker():
     t = np.linspace(0, 0.10, int(44_100 * 0.10), False)
     beep_1 = (0.2 * np.sin(2 * np.pi * 550 * t)).astype(np.float32).tobytes()
     beep_2 = (0.2 * np.sin(2 * np.pi * 660 * t)).astype(np.float32).tobytes()
-    
+
+    # from pywhispercpp.model import Model
+    # cppmodel = Model('large-v3-turbo')
+
     while True:
         if pressed.wait():
             stream = pa.open(
@@ -83,6 +86,8 @@ def worker():
             audio_float = audio_int16.astype(np.float32) / 32_768.0
             result = pipe(audio_float, batch_size=1)
             text = result["text"].strip()
+            # segments = cppmodel.transcribe(audio_float)
+            # text = "".join([segment.text for segment in segments])
 
             typewriter(text)
 
