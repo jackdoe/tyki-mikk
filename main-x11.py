@@ -33,7 +33,7 @@ pressed = threading.Event()
 local_dpy = display.Display()
 record_dpy = display.Display()
 ROOT = local_dpy.screen().root
-F_KEYCODE = local_dpy.keysym_to_keycode(XK.string_to_keysym("F8"))
+F_KEYCODE = local_dpy.keysym_to_keycode(XK.string_to_keysym("F4"))
 ROOT.grab_key(F_KEYCODE, 0, True, X.GrabModeAsync, X.GrabModeAsync)
 
 def record_callback(reply):
@@ -50,7 +50,7 @@ def record_callback(reply):
             elif event.type == X.KeyRelease and pressed.is_set():
                 pressed.clear()
 
-def processor():
+def worker():
     pa = pyaudio.PyAudio()
     beeper = pa.open(format=pyaudio.paFloat32,
                  channels=1,
@@ -89,7 +89,7 @@ def processor():
 
             pyautogui.write(result["text"].strip(), interval=0.001)
 
-threading.Thread(target=processor,daemon=True).start()
+threading.Thread(target=worker,daemon=True).start()
 ctx = record_dpy.record_create_context(
         0,
         [record.AllClients],
